@@ -1,0 +1,1011 @@
+---
+title: "<center>Do you see <i>identifiable</i> as <i>identify + -able</i><br> or just <i>identifiable?</i><br>-<br> Individual Differences<br> in the Processing Of Complex Words</center>"
+author: "Tammy Ganster"
+date: "2025-03-25"
+output:
+  html_document:
+    theme: "flatly"
+    toc: true
+    number_sections: true
+    toc_float: true
+editor_options: 
+  chunk_output_type: console
+---
+
+<style>
+body {
+text-align: justify}
+</style>
+
+# Preamble
+
+This is a small excerpt of the data analysis I conducted for my dissertation project. It uses data I collected experimentally online for my dissertation project. The aim is to demonstrate my skills in
+
+* **R Programming**
+* **Statistical Data Analysis**
+* **Data Transformation**
+* **Data Visualization**
+* **Effective Communication of Complex Concepts and Insights from Data**
+
+I am keeping the use of technical linguistics terms to a minimum so that readers without a background in linguistics can also follow.
+
+# Introduction
+
+My dissertation revolves around stress in complex words such as *identifiable*. Clearly this word consists of the root *identify* plus the suffix *-able*. For this reason linguists call a word like *identifiable* a **complex word**.
+
+When stressing such a word a speaker generally has two options: they may use the stress of the root word (in this case *idéntify*) when assigning stress to the complex word. This would mean they say *idéntifiable*. Another option would be to disregard the stress of the root word and just take *identifiable* as one unit without seeing *identify* in it. This may result in a pronunciation such as *identifíable*, for instance. This pronunciation clearly shows no relationship to the stress of the root word *idéntify*. If you observe speakers of English, you will find that some speakers say *idéntifiable* (establishing a stress relationship to the root word) while others say *identifíable* (making no reference to the stress of the root word). The goal of my dissertation project was to find out where this stress variation in complex words comes from and why some speakers use the stress of the root word and others do not.
+
+In order to answer this question, I needed to learn many things about the speakers who participated in my study. One thing I needed to know was how they tended to process complex words consisting of a root and a suffix just like *identifiable*. I was interested in finding out whether individual speakers processed these words differently so that I could ultimately explore the effect this may have on the way they stress morphologically complex words. In this demonstration I will focus on showing the results of the analysis of the priming task.
+
+# Method
+
+I set up a masked-priming experiment with a lexical decision task to gain insight into this. In this experimental design speakers would see a so-called forward mask of hashtags (#) and then very briefly (50ms) see a prime word (for example *celebration*) (hence "masked priming"). Afterwards they saw a target word (for example *celebrate*) which would stay on the screen longer. It was then their task to indicate whether they thought this target word was a real word of the English language or not (hence "lexical decision task"). The idea behind this design is that speakers who tend to process their complex words in two parts (root + affix) already see and activate the word *celebrate* in their minds when I show them the complex word *celebration*. When I show them only the word *celebrate* afterwards, these speakers should be able to make a decision about its word status (i.e. react to this stimulus) faster because *celebration* already co-activated *celebrate* for them. Speakers who do not process their complex words in two parts, on the other hand, and only activate *celebration* in their minds when I show them *celebration* without also activating *celebrate* should react more slowly to *celebrate* than the former group of speakers.
+
+In order to test for the presence of these processing effects I had to present speakers with test stimuli, distraction stimuli, and control stimuli
+
+* **Morphologically Related Stimuli**: *celebration* - *celebrate*. The root word of *celebration* is *celebrate*. The two words are related via the form and meaning of this root word. That is why linguists call them morphologically related words. These are the test stimuli.
+
+* **Orthographically Related Stimuli**: *intensity* - *interfere*. Orthography refers to spelling. As you can see these two words are spelled somewhat similarly so we will call them orthographically related here. But they are clearly not morphologically related like *celebration* and *celebrate*. These are distraction/control stimuli.
+
+* **Unrelated Stimuli**: *attributable* - *irritate*. These two words clearly have nothing to do with each other at all. They are neither morphologically nor orthographically related. These are control stimuli.
+
+I measured speakers' reaction times to these three different types of stimuli. In total the experiment presented speakers with 60 different word pairs. I expect that speakers who break complex words down as they process them should react fastest to the morphologically related stimuli, second fastest to the orthographically related stimuli, and slowest to the unrelated stimuli. Speakers who do not break down the complex words to process them likely also will not show any major differences in their reaction times to the three different stimulus groups. 
+
+# Preparing the Analysis
+
+## Setting Up and Loading the Data
+I like to create a clean slate at the start of all my scripts so we will clear any plots, the console, and the environment to start with.
+
+```{r}
+graphics.off() #clear plots
+
+cat("\014") #clear console
+
+rm(list=ls()) #clear environment
+```
+
+Let's first set our working directory. Please adjust this code for running it on your machine and specify the file path where you saved the data frames "MetaData.csv" and "MorphSens.csv".
+
+```{r}
+setwd("C:/Users/Tammy/Coding Portfolio/R_Project")
+```
+
+```{r echo = FALSE, message = FALSE, warning = FALSE}
+#loading packages in the background
+library(cluster)
+library(DHARMa)
+library(effects)
+library(factoextra)
+library(lme4)
+library(stats)
+library(sjPlot)
+library(tidyverse)
+library(visreg)
+```
+
+I also want to use custom color palettes for plotting later so I will specify my color palettes here.
+
+```{r}
+TwoColors <- c("#7BCCC4","#0868AC")
+ThreeColors <- c("#084081","#2B8CBE","#7BCCC4")
+```
+
+We will need two data frames: `MetaData.csv` and `MorphSens.csv`.
+
+Let's load them both and assign them to objects for efficient handling.
+
+```{r}
+Meta <- read.csv("MetaData.csv", 
+                 header = TRUE, 
+                 sep = ",", 
+                 stringsAsFactors = TRUE)
+
+Morph <- read.csv("MorphSens.csv", 
+                  header = TRUE, 
+                  sep = ",",
+                  stringsAsFactors = TRUE)
+
+?knitr::knit
+```
+
+## Inspecting the Data Frames
+
+`Meta` contains all the socio-demographic data about my speakers. `Morph` contains the data collected using the masked priming lexical decision task described above.
+
+Now we can inspect the two data frames using the `head()` function. Because both data frames are quite big, I am going to restrict the output of `head()` to just one line for each data frame. I am also going to use the `dim()` function to get the number of rows and columns in each data frame.
+
+```{r}
+dim(Meta)
+head(Meta,1)
+
+dim(Morph)
+head(Morph,1)
+```
+
+As you can see we have quite a large number of variables in each data frame and `Morph` has a large number of observations at 9360. `Meta` is smaller at only 156  observations. Not all of the variables shown here will be relevant for our analysis. I will explain each variable in more detail before presenting analysis results that rely on it. We also have categorical variables (see `Meta$Status`) as well as numerical variables (see `Morph$LabvRT`) in each of our two data frames.
+
+We will merge the data frames so that we can analyze the socio-demographic data and the experimental data together effectively and see how the speakers' socio-demographic characteristics relate to their performance on the experimental task. I will use the `inner_join()` function from the `dplyr` package and assign the result of the join to the object `MS`. Every participant has a unique ID assigned to them in the variable `Participant` that is consistent across all data frames in my dissertation project. So we will use this variable to join the data frames.
+
+```{r}
+MS <- inner_join(Morph, Meta, "Participant")
+```
+
+## Cleaning the Data {.tabset}
+
+Let's check the column names of the merged data frame `MS`.
+```{r}
+colnames(MS)
+```
+
+The output of `colnames()` shows us that we have some duplicate variables now ending in either .x or .y. This is a bit annoying and not helpful. Let's get rid of the duplicates.
+
+```{r}
+MS <- MS %>% 
+  rename_at(
+    vars(ends_with(".x")), #find all variables that end in .x
+    ~str_replace(., "\\..$","") #replace .x with nothing
+  ) %>% 
+  select_at( 
+    vars(-ends_with(".y")) #find all variables that end in .y and remove them
+  )
+```
+
+We can also get rid of the variable `X`. It is a by-product of the merging and contains no useful information.
+
+```{r}
+summary(MS$X)
+
+MS$X <- NULL
+```
+
+I will check my work one more time to make sure everything is really the way I want it.
+
+```{r}
+colnames(MS)
+```
+
+Good. No more duplicates. No more unnecessary variables.
+
+This was only a minor issue about the data that we had to clean up. Now let's turn to the others, some of which are more complex.
+
+A small number of speakers participated in my experiment twice due to technical issues. Thanks to the time codes provided by the experimental software I was able to distinguish their first tries from their second tries in the data. Let's exclude the first incomplete tries and include only the complete second tries of these speakers. This information is encoded in the variable `Status` and complete attempts are marked `accepted` here.
+
+```{r}
+summary(MS$Status)
+
+MS1 <- MS %>%
+  filter(Status == "accepted") %>% #get all obs with Status "accepted"
+  droplevels() #drop empty levels
+
+summary(MS1$Status)
+```
+
+One of the most important variables we have in this data frame is `LabvRT`. It encodes the participants' reaction times to the presented stimuli. As is typical of reaction time data, this variable will need to be checked and cleaned thoroughly.
+
+First, we need to subtract 1550 ms from each reaction time measurement because this was the time it took for the crucial stimulus to show up on the screen in the first place. This is specific to my experiment and due to the allowances of the experimental software.
+
+```{r}
+summary(MS1$LabvRT)
+
+MS1$RT <- (MS1$LabvRT - 1550)
+
+summary(MS1$RT)
+```
+
+We have some negative reaction times now because some participants clicked through this task. Let's exclude these negative reaction times right away. They are not useful for us.
+
+```{r}
+MS1 <- MS1 %>%
+  filter(RT > 0) %>% #get all obs with RT greater than 0
+  droplevels() #drop empty levels
+
+summary(MS1$RT)
+```
+
+Since this was an online experiment, each participant did the experiment on their own device. This can create issues for reaction time measurement because some devices may be slower than others. The experimental software I used (Labvanced) provides metrics for assessing the accuracy of the measured reaction times. I will clean the reaction times further according to Labvanced's recommendations.
+
+The median of the variable `TimeMeasureSTD_inMilSecs` should be 12 ms according to Labvanced. They recommend excluding all values that are 2-3 times above this median value. Therefore I am excluding all values above 24.
+
+```{r}
+summary(MS1$TimeMeasureSTD_inMilSecs)
+
+MS2 <- MS1 %>%
+  filter(TimeMeasureSTD_inMilSecs <= 24) %>% #get all values less than or equal to 24
+  droplevels() #drop empty levels
+
+summary(MS2$TimeMeasureSTD_inMilSecs)
+```
+
+The second relevant metric for making sure the reaction time measurement was accurate is `TimeDelayOffset_MilSecs`. Here Labvanced recommends the median should be 20 ms at most. All values in the present data are below this value so we are good to go here.
+
+```{r}
+summary(MS2$TimeDelayOffset_MilSecs)
+```
+
+Next, since this was a lexical decision task (*Is this a real word in English? Yes or no?*) we also had to have some made up words in here like *cetenise*, *gloach*, and *tront*. This means participants could be either right or wrong in their judgments of the stimuli. We are only interested in their correct responses.
+
+```{r}
+MS3 <- MS2 %>%
+  filter(ParticipantRespScored == "correct") %>% #get only correct obs
+  droplevels() #drop empty levels
+
+summary(MS3$ParticipantRespScored)
+```
+
+And we are also only interested in their reaction times for the real words not the invented words.
+
+```{r}
+table(MS3$TargetStatus)
+
+MS4 <- MS3 %>%
+  filter(TargetStatus == "real") %>% #get only real targets
+  droplevels() #drop empty levels
+
+summary(MS4$TargetStatus)
+```
+
+Fewer speakers (only three) participated on mobile devices than I expected.
+
+```{r}
+MS4 %>%
+  filter(DeviceType == "mobile") %>% #get only mobile participants
+  distinct(Participant) #show me the unique Participant IDs for this subset
+```
+
+The problem is also that they were much slower than the desktop participants.
+
+```{r}
+MS4 %>%
+  ggplot(aes(x=DeviceType, 
+              y=RT, 
+              fill=DeviceType)) +
+  geom_boxplot() +
+  scale_fill_manual(values = TwoColors) +
+  geom_jitter(color="black", 
+              size=0.2, 
+              alpha=0.9) +
+  theme_classic() +
+  theme(
+    legend.position="none",
+    text = element_text(size = 18)) +
+  ggtitle("RT by Device Type") +
+  xlab("")
+```
+
+With just three participants it's difficult to reliably determine why they are so much slower. For instance, it's not like they are particularly old.
+
+```{r}
+MS4 %>%
+  filter(Participant %in% c("Participant_003", 
+                            "Participant_030",
+                            "Participant_093")) %>% #get these participants
+  summarise( #make me a summary for these participants with
+  Min = min(Age), #the minimum age
+  Q1 = quantile(Age, 0.25), #the age at Q1
+  Median = median(Age), #the median age
+  Mean = round(mean(Age),2), #the mean age
+  Q3 = quantile(Age, 0.75), #the age at Q3
+  Max = max(Age) #the maximum age
+)
+
+#compare that to the age across all participants
+summary(MS4$Age)
+```
+
+So I will exclude the mobile participants here just to make sure there are no confounding factors.
+
+```{r}
+MS5 <- MS4 %>%
+  filter(DeviceType != "mobile") %>%
+  droplevels()
+```
+
+We can also exclude the control items where the prime and target are only orthographically related. These are all observations where the variable `Condition` is `mnoy` (short for: morphologically related no, orthographically related yes). Before we exclude them though, note that we almost got the reaction time ranking we expected in the beginning across the different priming conditions. `mnon` is the unrelated condition (*attributable* - *irritate*) and `myoy` is the morphologically related condition (*celebration* - *celebrate*).
+
+```{r}
+MS5 %>%
+  group_by(Condition) %>% #group the data by the values of Condition
+  summarise(mean = mean(RT)) %>% #calculate the mean RT for each condition group
+  arrange(desc(mean)) %>% #show me the result in descending order
+  ungroup() #undo the grouping
+
+MS6 <- MS5 %>%
+  filter(Condition != "mnoy") %>% #get only those observations where Condition is not mnoy
+  droplevels() #drop empty levels
+
+#checking my work
+summary(MS6$Condition)
+```
+
+Now we can perform the final clean up of your most important variable: the reaction time `RT`. Let's first have a look at how the reaction times are distributed.
+
+```{r}
+#let's have a look at just the numbers with summary()
+summary(MS6$RT)
+
+#and let's also visualize the distribution
+ggplot(MS6, aes(x = RT)) +
+  geom_density(adjust = 1.5,
+               alpha = 0.7,
+               fill = "#084081") +
+  theme_classic() +
+  theme(text = element_text(size = 18)) +
+  xlab("RT")
+```
+
+The output of the summary function indicates that we do not have any implausibly short RTs in the data (these would be RTs below 300 ms according to most sources). This means we do not need to do any trimming on the distribution's righthand edge. There are several different options for trimming reaction times. Since this a comparatively small data frame, I chose a more conservative trimming method that allows me to keep a little more data than some of the other methods using the IQR or SD would have left me with.
+
+```{r}
+#finding the 95th quantile
+Q95RT <- quantile(MS6$RT, 0.95)
+Q95RT
+
+MSfinal <- MS6 %>%
+  filter(RT < Q95RT) %>% #get only those RTs that are less than the value of the 95th quantile
+  droplevels() #drop the empty levels
+
+#checking my work
+summary(MSfinal$RT)
+
+#how much data was lost?
+data_before <- nrow(MS6) #save size of MS6 in data before trimming
+data_after <- nrow(MSfinal) #save size of MSfinal in data after trimming
+
+#the percentage of data we have left is the quotient of data_after divided by data_before
+percentage_left <- (data_after/data_before)
+
+round( #round the result of
+  (1 - percentage_left)*100, #subtracting the data left from the whole (1) and multiplying by 100
+  0) #round to zero decimal places
+```
+
+Let's visualize the distribution of the reaction times now after outlier trimming. For comparison you can also see the distribution before trimming again in the second tab.
+
+### After Trimming
+
+```{r}
+ggplot(MSfinal,
+       aes(x = RT)) +
+  geom_density(adjust = 1.5,
+               alpha = 0.7,
+               fill = "#084081") +
+  theme_classic() +
+  theme(text = element_text(size = 18)) +
+  scale_x_continuous(limits = c(300,1500)) +
+  xlab("RT")
+```
+
+The visualization shows that the data still has a clear positive skew (it is skewed to the right as evidenced by the longer right tail). It is important to keep this in mind when fitting a regression model to the data later. Regression models usually assume the dependent variable (in our case: the reaction time) is normally distributed (i.e. follows a Gaussian distribution). The distribution above is not Gaussian but more consistent with a so-called Gamma distribution. Luckily, we can tell the model that the data has this distribution later. Another option would be to transform the data. However, this could make the reaction time data less intuitive to interpret or shrink/distort the precise individual differences I am interested in. I will not transform the data for this reason.
+
+### Before Trimming
+
+```{r}
+ggplot(MS6, aes(x = RT)) +
+  geom_density(adjust = 1.5,
+               alpha = 0.7,
+               fill = "#084081") +
+  theme_classic() +
+  theme(text = element_text(size = 18)) +
+  xlab("RT")
+```
+
+## Creating a New Variable
+
+For some analyses I will need to know if the speaker is a native speaker of English or not. The variable `FirstLang` holds this information for each speaker.
+
+```{r}
+summary(MS$FirstLang)
+nlevels(MS$FirstLang)
+```
+
+As we can see from the output of applying the `summary()` and `nlevel()` functions to the variable, it has 21 levels. This is a level of detail that is not necessary for my analysis. So I will create a new variable that encodes the native language information for each speaker in binary format (`Native_Speaker` vs. `Non-Native_Speaker`). I will call the new variable `FirstLangBinary`.
+
+```{r}
+MSfinal$FirstLangBinary <- case_when( #assign to FirstLangBinary all obs where
+  MSfinal$FirstLang == "English" | #FirstLang is English OR
+    MSfinal$FirstLang == "English+Other" ~ "Native_Speaker", #English+Other, rename these to "Native_Speaker"
+  TRUE ~ "Non-Native_Speaker") #rename all others to "Non-Native_Speaker"
+
+MSfinal$FirstLangBinary <- as.factor(MSfinal$FirstLangBinary) #convert the result to a factor
+```
+
+In the code above I used `case_when()` to evaluate for each value in `FirstLang` whether it is "English" or "English+Other". This information corresponds to people who grew up speaking only English as their native language and bilingual English speakers. For all other values I want the code to assign "Non-Native_Speaker". Finally, I also want to make sure the output of the `case_when()` coding is read as a factor in R. Let's check my work with `summary()`.
+
+```{r}
+summary(MSfinal$FirstLangBinary)
+```
+
+One final step remains: for easier plotting and comparisons I want to reorder the factor levels of the `Condition` variable.
+
+```{r}
+#before reordering
+levels(MSfinal$Condition)
+
+#reordering the factor levels
+MSfinal$Condition <- factor(MSfinal$Condition, levels = c("myoy","mnon"))
+
+#checking my work after reordering
+levels(MSfinal$Condition)
+
+```
+
+Success! Now we can start with the analysis.
+
+# Analysis
+
+## Reaction Time & Priming Condition
+
+Let's first have a general look at how speakers reacted to the two priming conditions of interested: morphologically related pairs and unrelated pairs.
+
+```{r}
+MSfinal %>%
+  ggplot( aes(x=Condition, y=RT, fill=Condition)) +
+  geom_violin() +
+  scale_fill_manual(values = TwoColors) +
+  theme_classic() +
+  theme(
+    legend.position="none",
+    text = element_text(size = 16)) +
+  ggtitle("Reaction Time By Priming Condition (N = 2143)") +
+  scale_x_discrete(labels = c("related","unrelated")) +
+  xlab("")
+```
+
+This violin plot indicates that on average, across all speakers, reaction times for morphologically related stimuli (think *celebration* - *celebrate*) were indeed shorter than reaction times for completely unrelated stimulus pairs (think *attributable* - *irritate*). The advantage of using a violin plot over a boxplot here is that the violin plot conveniently gives us the full range of information about the distribution of the reaction times in each category. Boxplots cannot provide this level of detail. That is why I used jitter dots in the first boxplot above to counteract this. But I am not interested in group averages, I am interested in the behavior of individual participants and how they react differently to related and unrelated prime-target pairs.
+
+## Participants' Individual Priming Effects
+
+Let's first get the mean reaction for each condition for each participant.
+
+```{r}
+#first for the unrelated condition (mnon)
+means_mnon <- MSfinal %>%
+  select(Participant, Condition,RT) %>% #extract Participant, Condition, and RT columns
+  filter(Condition == "mnon") %>% #get only those obs with Condition = mnon
+  group_by(Participant) %>% #group the output by participant
+  mutate(Part_MeanRT_mnon = mean(RT)) %>% #create the column Part_MeanRT_mnon, fill with mean of RT
+  distinct(Participant, Part_MeanRT_mnon) %>% #get rid of duplicate participant and mean RT rows
+  ungroup() #undo the grouping
+
+#checking the result
+summary(means_mnon$Part_MeanRT_mnon)
+
+#then for the related condition (myoy)
+means_myoy <- MSfinal %>%
+  select(Participant, Condition,RT) %>% #extract Participant, Condition, and RT columns
+  filter(Condition == "myoy") %>% #get only those obs with Condition = myoy
+  group_by(Participant) %>% #group the output by participant
+  mutate(Part_MeanRT_myoy = mean(RT)) %>% #create the column Part_MeanRT_myoy, fill with mean of RTs
+  distinct(Participant, Part_MeanRT_myoy) %>% #get rid of duplicate participant and mean RT rows
+  ungroup() #undo the grouping
+
+#checking the result
+summary(means_myoy$Part_MeanRT_myoy)
+
+#now 
+MSfinal <- MSfinal %>%
+  left_join(means_mnon, MSfinal, by = "Participant") %>%
+  left_join(means_myoy, MSfinal, by = "Participant")
+```
+
+Now I can calculate a priming effect for each participant by calculating the difference between the mean reaction time to the unrelated condition and the related condition (MeanRT(mnon) - MeanRT(myoy)).
+
+```{r}
+MSfinal$PrimingEffect <- (MSfinal$Part_MeanRT_mnon - MSfinal$Part_MeanRT_myoy)
+
+#checking my work
+summary(MSfinal$PrimingEffect)
+
+#there are positive and negative priming effects. I want to encode this property in a new variable
+
+MSfinal <- MSfinal %>%
+  mutate(PolarityPriming = case_when( #create variable PolarityPriming that is
+    PrimingEffect > 0 ~ "positive", #positive for PrimingEffects greater than zero
+    PrimingEffect < 0 ~ "negative") %>% #negative for PrimingEffects less than zero
+      factor()) #convert the output to a factor
+
+#checking my work
+summary(MSfinal$PolarityPriming)
+with(MSfinal, tapply(PrimingEffect, PolarityPriming, summary))
+```
+
+We have a lot of range in the priming effects! Negative priming effects mean that a speaker reacted faster to the unrelated condition than they reacted to the related condition. Positive priming effects mean the speaker reacted faster to the morphologically related condition than to the unrelated condition. Let's visualize the priming effect for each participant so we can really get an idea of the variation.
+
+```{r}
+MSfinal %>%
+  distinct(Participant, .keep_all = TRUE) %>% #get only unique participant rows
+  sample_n(50, replace = FALSE) %>% #draw a random sample of 50 from these
+  ggplot(aes(x = Participant,
+             y = PrimingEffect,
+             fill = PolarityPriming)) +
+  geom_col(position = "identity",
+           linewidth = 0.25) +
+  scale_fill_manual(values = c("#bf1029", #red for negative values
+                               "#3f8f29"), #green for positive calues
+                    guide = "none") + #no legend
+  theme_classic() +
+  theme(axis.text.x = element_blank(), #no text on the ticks for x-axis
+        text = element_text(size = 18)) +
+  ylab("Priming Effect")
+```
+
+As you can see we have a lot of variation indeed. On the one hand speakers differed in which condition they reacted faster to: red bars represent cases where the unrelated condition was reacted to faster on average by the speaker, green bars represent cases where the speaker on average reacted faster to the morphologically related condition. The magnitude of the differences in reaction times to the two conditions also varies quite a lot across participants as indicated by the different heights of the bars in either direction.
+
+```{r}
+#how many speakers in total reacted faster to the unrelated condition than the related condition (i.e. have a negative priming effect)?
+
+MSfinal %>%
+  distinct(Participant, .keep_all = TRUE) %>%
+  filter(PolarityPriming == "negative") %>%
+  count()
+
+#38 speakers have a negative priming effect
+
+nlevels(MSfinal$Participant)
+#out of our total of 126 speakers
+
+38/nlevels(MSfinal$Participant)
+#that is around 30% of our speakers
+```
+
+## Examining Potential Confounding Factors {.tabset}
+
+Just so we can be more sure that it's really the priming condition that is at work here and no other characteristics of our speakers let's look at the relationship between priming effect and age as well as priming effect and native speaker status of the participant.
+
+### Age
+
+```{r}
+#visualizing the correlation
+MSfinal %>%
+  distinct(Participant, .keep_all = TRUE) %>%
+  ggplot(aes(x = Age,
+             y = PrimingEffect)) +
+  geom_point() +
+  geom_smooth(method=lm , color="#0868AC", fill="gray", se=TRUE) +
+  theme_classic() +
+  theme(text = element_text(size=18))
+
+#testing the correlation
+
+#making helper df to be able to use Base R
+MSfinal_unique <- MSfinal %>%
+  distinct(Participant, .keep_all = TRUE)
+
+#correlation testing using kendall because we have tied ranks (see plot)
+cor.test(MSfinal_unique$Age,
+         MSfinal_unique$PrimingEffect, 
+         method = "kendall")
+```
+
+The scatter plot shows us that there is only a very weak, negative relationship between age and priming effect. The Kendall's Tau confirms the magnitude and direction of the relationship. The large p-value indicates that there is no significant correlation between priming effect and speaker age. Next we turn to native speaker status.
+
+### Native Speaker Status
+
+```{r}
+#visualizing the relationship
+MSfinal %>%
+  distinct(Participant, .keep_all = TRUE) %>%
+  ggplot(aes(x = FirstLangBinary,
+             y = PrimingEffect,
+             fill = FirstLangBinary)) +
+  geom_boxplot() +
+  scale_fill_manual(values=TwoColors)  +
+  scale_x_discrete(labels = c("Native Speakers",
+                              "Non-Native Speakers")) +
+  geom_jitter(color="black", 
+              size=0.4, 
+              alpha=0.9) +
+  stat_summary(fun = mean, 
+               geom = "point", 
+               shape = 20, 
+               size = 5, 
+               color="black", 
+               fill="black") +
+  theme_classic() +
+  theme(
+    legend.position="none",
+    text = element_text(size = 18)) +
+  ggtitle("") +
+  xlab("")
+
+#testing for difference in means (again using the helper df MSfinal_unique)
+wilcox.test(
+  MSfinal_unique[MSfinal_unique$FirstLangBinary == "Native_Speaker",]$PrimingEffect,
+  MSfinal_unique[MSfinal_unique$FirstLangBinary == "Non-Native_Speaker",]$PrimingEffect, alternative = "greater", conf.int = TRUE)
+```
+
+Looking at the boxplot above we can see that there is only a small difference between native and non-native speakers' mean (large black dots) and median priming effects (horizontal lines in boxes). The Wilcoxon rank sum test I applied returned a non-significant p-value. The small difference we see is not statistically significant. Note, though, that we have very little data in the non-native speaker group compared to the native speaker group.
+
+## More Individuality: Priming & Vocabulary Size
+
+As I explained above, exploring the individual linguistic processing of my speakers was crucial to my dissertation project. Besides finding out how speakers process complex words I also tested the size of their vocabulary using a standardized vocabulary size test (for more information see this link: https://www.wgtn.ac.nz/lals/resources/paul-nations-resources/vocabulary-tests). On this test speakers could achieve a score between zero and 20,000. The score expresses how many word families the test assumes the speakers know. So a score of 20,000 does not mean the speaker knows 20,000 words but that they know at least 20,000 word **families** so significiantly more than 20,000 individual words. 
+
+It is reasonable to assume that speakers should be able to react faster to words that they know. And the greater someone's vocabulary is, the more words they know and the greater their advantage should be in the priming task that tested their processing of complex words. We will now explore the relationship between morphological processing and vocabulary size in my data.
+
+Let's start by looking at the relationship between the reaction time in the priming task and the score from the vocabulary size test for each priming condition in the priming task.
+
+```{r message = FALSE}
+MSfinal %>%
+  ggplot(aes(x = VSTScore,
+             y = RT,
+             colour = Condition)) +
+  geom_point(size = 1, 
+             color = "black") + 
+  geom_smooth(method="lm") + 
+  labs(x = "VSTScore", 
+       y = "RT") + 
+  theme_classic() +
+  theme(text = element_text(size= 18), 
+        legend.position = "bottom",
+        legend.text = element_text(size = 16),
+        legend.title = element_text(size = 16)) +
+  scale_color_discrete(name = "Condition", 
+                       labels = c("morphologically related", 
+                                  "unrelated"))
+```
+
+We can see that, as evidenced by the negative slopes of both regression lines in the plot, speakers with larger vocabularies generally were able to react faster in the priming task regardless of the priming condition. However, the fact that the red regression line for related prime-target pairs has a steeper negative slope than the blue regression line for the unrelated prime-target pairs also tells us that a larger vocabulary made speakers' reaction even faster when they were asked to react to a morphologically related prime-target pair. So we see an interaction between vocabulary size and priming condition here.
+
+The overall correlation between vocabulary size and reaction time in the priming experiment is also weak but statistically significant and negative meaning the greater the vocabulary size the lower (i.e. faster) the reaction time.
+
+```{r}
+cor.test(
+  MSfinal$VSTScore,
+  MSfinal$RT, 
+  method = "kendall",
+  alternative = "less")
+```
+
+I also tested the correlation between the priming effect and vocabulary size and found a weak, positive and statistically significant correlation. This means speakers with greater vocabulary sizes tended to have more positive priming effects (so their reaction to related prime-target pairs was faster than that to unrelated prime-target pairs) and greater positive priming effects. This supports the analysis from above, which also showed that speakers with greater vocabularies react faster to morphologically related prime-target pairs than to unrelated pairs.
+
+```{r}
+#visualizing the relationship
+MSfinal_unique %>%
+  ggplot(aes(x =  VSTScore,
+             y = PrimingEffect)) +
+  geom_point() +
+  geom_smooth(method=lm , 
+              color="#0868AC", 
+              fill="gray", 
+              se=TRUE) +
+  theme_classic() +
+  theme(text = element_text(size = 18))
+
+#testing the correlation
+cor.test(MSfinal_unique$VSTScore,
+         MSfinal_unique$PrimingEffect, 
+         method = "kendall", 
+         alternative = "greater")
+```
+
+## Cluster Analysis
+
+I wanted to explore my data further using different methods to validate the results from above. Since I am interested in the individual behavior of speakers I do not want an analysis that shows me how the whole group of speakers behaves together. I want an analysis that can identify sub-groups that behave alike within the large group of my speakers. For this reason I decided to do a cluster analysis using hierarchical clustering. We will need functions from the packages `stats`, `cluster`, and `factoextra` for the cluster analysis.
+
+First we need to make a data frame that contains our data that is to be clustered. I want to cluster participants based on their priming effect so I just need a simplified data frame that only contains `Participant` and `PrimingEffect`.
+
+```{r}
+#extracting the desired columns as a table
+cluster_data <- MSfinal %>%
+  select(Participant, PrimingEffect) %>%
+  distinct(Participant, .keep_all = TRUE)
+
+#checking the result
+head(cluster_data)
+
+#for next step row names of table need to be levels of Participant
+rownames(cluster_data) <- levels(cluster_data$Participant)
+head(cluster_data)
+
+#and we no longer need the Participant column now so we can set it to NULL
+cluster_data$Participant <- NULL
+```
+
+Now we can create a distance matrix to see how different speakers' priming effect values are from each other. Distance matrices may be calculated in several different ways. I tried Euclidean, Manhattan, Maximum and Canberra and finally settled on Euclidean because it yielded the most interpretable solution.
+
+```{r}
+#creating the Euclidean distance matrix
+euclid_dist <- dist(cluster_data, 
+                    method = "euclidean")
+
+#checking the result
+summary(euclid_dist)
+```
+
+Great. We can move on to the actual clustering. Just as there are different methods for calculating the distance matrix there are different cluster agglomeration methods as well. I tried ward.D2, complete, single, and average clustering. Ward.D2 and complete clustering both yielded the best results. I will show how I clustered the data using the complete method here.
+
+```{r}
+#clustering
+complete_hc <- cluster_data %>%
+  scale() %>%                    #scale the data
+  dist(method = "euclidean") %>% #compute dissimilarity matrix
+  hclust(method = "complete")     #compute hierarchical clustering
+
+#what is the optimal number of clusters?
+#we will use silhouette width to find out
+cluster_test <- sapply(2:8, #for scenarios 2 through 8 clusters
+                       function(x) 
+                         summary( #give me a summary
+                           silhouette( #of the result of applying silhouette() to
+                             cutree(complete_hc, k = x), euclid_dist))$avg.width) 
+#the result of applying cutree() to the complete_hc data for x = 2:8, select only the column avg.width from the summary output 
+
+#checking the result
+cluster_test
+#silhouette width ranges from 0 (poor) to 1 (excellent)
+#values below 0.2 are already considered too low for effective clustering
+#all of our values are well above 0.2 so that is encouraging
+
+#we will find the maximum silhouette width
+max(cluster_test)
+
+#the maximum silhouette width is the second item in cluster_test
+#since cluster_test outputs the result for trying 2 to 8 clusters
+#this corresponds to a solution with 3 clusters
+```
+
+In the next step I will visualize the clustering solution.
+
+```{r message = FALSE, warning= FALSE}
+#we will use the `fviz_dend()` function from `factoextra` to visualize
+fviz_dend(complete_hc, k = 3, #make 3 clusters
+          cex = 0.5, #set label size
+          k_colors = c("#084081","#2B8CBE","#7BCCC4"),
+          color_labels_by_k = TRUE, #color labels by groups
+          rect = TRUE, #add rectangle around groups
+          main = ""
+)
+```
+
+The cluster analysis has identified three groups: most participants fall into the largest cluster group in the center. Then there are two more smaller clusters. The darker blue cluster on the very lefthand side is the smallest. The greenish-blue cluster on the very righthand side is the largest.
+
+Let's connect the clustering information back to the original data frame (`MSfinal`) so we can figure out exactly how many speakers are in which cluster and what priming effect patterns are predominant in each cluster.
+
+```{r}
+#let's get a list of which participant is in which cluster
+cluster_membership_c <- cutree(complete_hc, k = 3)
+head(cluster_membership_c)
+
+#let's turn this information into a data frame
+clustmember_c.df <- as.data.frame(cluster_membership_c)
+
+#the data frame needs a column with participant names
+#currently the participant IDs are only available
+#as the row names of the data frame
+clustmember_c.df$Participant <- rownames(clustmember_c.df)
+head(clustmember_c.df)
+
+#now we do not need the row names anymore
+rownames(clustmember_c.df) <- NULL
+
+#now we can join this information back into MSfinal
+MSfinal <- MSfinal %>%
+  left_join(clustmember_c.df, MSfinal, by = "Participant")
+
+#checking the result
+summary(MSfinal$cluster_membership_c)
+```
+
+Now that MSfinal has been enriched with the cluster membership information we can run some more analyses.
+
+```{r}
+#how many speakers are in each cluster group?
+MSfinal %>% 
+  group_by(cluster_membership_c) %>% 
+  summarise(n = length(unique(Participant))) %>%
+  ungroup() #undo the grouping
+
+#from this we can conclude that cluster 1 is the central cluster, cluster 2 is the very lefthand cluster, and cluster 3 is the very righthand cluster in the dendrogram above.
+
+```
+
+What does the ``PrimingEffect` look like for each cluster group?
+
+```{r}
+tapply(MSfinal$PrimingEffect, 
+       (MSfinal$cluster_membership_c), 
+       summary)
+```
+
+The summary per cluster group indicates that most speakers in cluster 1 (the largest cluster) have a positive priming effect. So most speakers reacted to the morphologically related condition faster than the morphologically unrelated condition. Those speakers that do have a negative priming effect in this group only have a very small negative priming effect (at a difference of around 9 ms). The second cluster group is soley made up of speakers who very clearly and exclusively show a negative priming effect meaning they usually reacted (much) faster to the unrelated condition than the related condition. So this group of speakers is markedly different from the majority group of speakers we can see in the first cluster. The last group, cluster 3, is also behaves differently from the majority of the other speakers: these are the speakers who always reacted faster to the morphologically related priming condition and usually did so significantly faster than most other speakers in the experiment. We could summarize the behavior of these three groups as follows:
+
+* **Cluster Group 1 - No Boost/Weak Boost**: These speakers get no or only a rather weak reaction time advantage from related prime target pairs.
+
+* **Cluster Group 2 - No Boost**: These speakers get no reaction time boost whatsoever from related prime-target pairs. 
+
+* **Cluster Group 3 - Boost**: For these speakers getting a related prime-target pair clearly and substantially boosts their reaction time.
+
+We see this pattern confirmed in the boxplot below. It shows the priming effect value per cluster group. There are absolutely no overlaps between the three groups which underlines the good performance of the clustering above.
+
+```{r}
+MSfinal %>%
+  ggplot(aes(x = factor(cluster_membership_c), 
+             y = PrimingEffect, 
+             fill = factor(cluster_membership_c))) +
+  geom_boxplot() +
+  scale_fill_manual(values = ThreeColors)  +
+  geom_jitter(color="black", size=0.4, alpha=0.9) +
+  stat_summary(fun = mean, 
+               geom ="point", 
+               shape =20, 
+               size =5, 
+               color ="black", 
+               fill ="black") +
+  theme_classic() +
+  theme(
+    legend.position="none",
+    text = element_text(size = 20)) +
+  scale_x_discrete(labels = c("1" = "No Boost/Weak Boost",
+                              "2" = "No Boost",
+                              "3" = "Boost")) +
+  xlab("")
+```
+
+## Generalized Linear Mixed-Effects (GLMM) Model
+
+Now that we have a good overview of how our most important variables in the data set behave it's time to put them to the final test all together: a generalized linear mixed-effects model. I will not include the cluster groups or priming effect in the model because the dependent variable in the GLMM model will be the reaction time measured in the priming task. Both the priming effect and the cluster groups were created using the reaction time so including them in the model would not be wise.
+
+The fixed-effect independent variables of the model will be:
+
+* Priming Condition (unrelated vs. related)
+* Vocabulary Size Test Score (scaled and centered around the mean)
+* First Lang Binary (native vs. non-native)
+
+And the random effects structure will consist of
+
+* Random intercepts per Participant Correlated with Random Slopes for the Effect of Priming Condition Per Participant
+
+We do not have a scaled and centered version of the vocabulary size test in the data frame yet so let's create that real quick.
+
+```{r}
+MSfinal$VSTScore_sc <- scale(MSfinal$VSTScore, center = TRUE, scale = TRUE)
+```
+
+Now we are all set and can specify our model formula. Recall from Section 3.2 that our dependent variable (the reaction time) is not normally distributed by right-skewed. This matches a gamma distribution. If we use the `glmer()` function we can specify the `family` argument as "Gamma", though, so that the model knows not to expect a normal distribution and can handle our data the way it is.
+
+```{r message = FALSE, warning = FALSE}
+#specifying the model
+MS_glmer1 = glmer(RT ~ Condition + VSTScore_sc + FirstLangBinary + (1+ Condition | Participant), data = MSfinal, family=Gamma(link="identity"))
+
+#and inspecting its output
+summary(MS_glmer1)
+```
+
+All of our dependent variables emerge as significant. Let's test this more rigorously using the `drop1()` function that compares all possible models the you could build by dropping one of the terms currently included in the model.
+
+```{r warning = FALSE, message = FALSE}
+#any unnecessary predictors in MS_glmer1?
+drop1_MS_glmer1 <- drop1(MS_glmer1, test="Chisq")
+
+#present the result sorted by p-vale
+drop1_MS_glmer1[order(drop1_MS_glmer1[,"Pr(Chi)"]),]
+#FirstLangBinary can go
+```
+
+The result of applying `drop1()` shows us that `FirstLangBinary` is an unnecessary predictor because the high p-value associated with it tells us that a model without `FirstLangBinary` is very likely just as good as a the full model meaning it might as well not be in the model at all. So let's update our original model accordingly and get the summary of the new model right away.
+
+```{r}
+#let's specify an updated version of the model
+MS_glmer1a = glmer(RT ~ Condition + VSTScore_sc + (1+ Condition | Participant), data = MSfinal, family=Gamma(link="identity"))
+
+#testing the original model against the new model using ANOVA.
+anova(MS_glmer1, MS_glmer1a, test = "Chisq")
+#again, model with FirstLangBinary not significantly better than model without it
+
+#any unnecessary predictors in MS_glmer1a?
+drop1_MS_glmer1a <- drop1(MS_glmer1a, test="Chisq")
+
+#present the result sorted by p-vale
+drop1_MS_glmer1a[order(drop1_MS_glmer1a[,"Pr(Chi)"]),]
+#no, all remaining predictors significant
+```
+
+Now that we know that the updated model is better than the original model and all remaining predictors are necessary for a good model fit we will take ta closer look at the model's output.
+
+```{r}
+summary(MS_glmer1a)
+```
+
+Let's first address the fixed effects. The intercept is 816 meaning that all other predictors being at their reference level
+
+* `Condition` = `myoy` so related prime-target pairs
+* Vocabulary Size Test Score = zero, which in this case means "average" because, remember, this variable has been centered 
+
+the reaction time is at 816 ms.
+
+The coefficient for the value `mnon` (so: unrelated prime-target pairs) of `Condition` is positive. This means that compared to the reference level (related prime-target pairs (`myoy`)) the unrelated priming condition increases the baseline reaction time indicated by the intercept (i.e. makes speakers react more slowly) by about 35 ms on average. Vocabulary size (`VSTScore_sc`), on the other hand, has a negative coefficient. For every 1 unit increase in vocabulary size (meaning as vocabulary size becomes greater than average) reaction time is decreased by around 44 ms.
+
+You can see the two fixed effects plotted below. In the first plot we can see that reaction time increased for unrelated prime-target pairs (`mnon`) compared to related prime-target pairs (`myoy`). 
+
+```{r warning = FALSE, message = FALSE}
+plot(Effect("Condition", MS_glmer1a), main = "")
+```
+
+This second plot visualizes the effect of the centered vocabulary size on reaction time and shows that the further above average (that is above zero) a speaker's vocabulary size is, the faster their reaction time becomes. Conversely, speakers with below average vocabulary sizes react more slowly the further their vocabulary is below average.
+
+```{r warning = FALSE, message = FALSE}
+plot(Effect("VSTScore_sc", MS_glmer1a), main = "", xlab = "Vocabulary Size")
+```
+
+Let's also have a look at the model's random effects.
+
+```{r}
+plot_model(MS_glmer1a, type = "re")
+```
+
+We find quite a bit of structure here. In the right panel we can see the individual intercept adjustments for all participants. Clearly, roughly half of the participants were generally slower than average (blue lines and dots, positive intercept adjustment), while the other half was faster than average as evidenced by the negative intercept adjustment (red lines and dots) they required.
+
+The model also gives us individual slope adjustments for the effect of the unrelated `mnon` priming condition (left panel). The polarity (positive vs. negative) of the slope adjustments varies across participants as well as the magnitude of the adjustments. To take a closer look at this I will calculate the finally adjusted slopes for each participant (so baseline model slope of 35.567 from the fixed effects plus the value for the individual slope adjustment for that speaker) and then divide the results into groups based on they compare to the overall slope for the unrelated condition from the model.
+
+Let's start by putting the random effects in a data frame and transforming it.
+
+```{r}
+#extracting the random effects to an object
+rancoefs_MS1a <- ranef(MS_glmer1a)
+
+#turning the object into a data frame
+rancoefs_MS1a_df <- as.data.frame(rancoefs_MS1a)
+head(rancoefs_MS1a_df)
+
+#we only need term, grp, and condval for our calculations
+rancoefs_MS1a_df <- rancoefs_MS1a_df %>%
+  select(term, grp, condval)
+
+#checking my work
+head(rancoefs_MS1a_df)
+
+#pivoting the df to wide format instead of long
+rancoefs_MS1a_df <- rancoefs_MS1a_df %>% 
+  pivot_wider(names_from = term, values_from = condval)
+
+#checking my work
+head(rancoefs_MS1a_df)
+```
+
+Now we can create a new column that will record the result of adding the individual `Conditionmnon` adjustment to the baseline slope of 35.567.
+
+```{r}
+#creating new column with individually adjusted slope
+rancoefs_MS1a_df <- rancoefs_MS1a_df %>%
+  mutate(indiv_adjusted_slope_mnon = Conditionmnon + 35.567)
+```
+
+And let's visualize the results.
+
+```{r}
+rancoefs_MS1a_df %>%
+ggplot(aes(
+  x = fct_rev(fct_reorder(grp, indiv_adjusted_slope_mnon)), 
+  y = indiv_adjusted_slope_mnon)) +
+  geom_point(color = "#0868AC", size = 2) + 
+  geom_segment(aes(
+    x=fct_rev(fct_reorder(grp, indiv_adjusted_slope_mnon)),
+    xend=fct_rev(fct_reorder(grp, indiv_adjusted_slope_mnon)), 
+    y = 0, 
+    yend = indiv_adjusted_slope_mnon),
+                   color = "#0868AC",
+                   linewidth = 1) +
+  labs(x = "", y = "") +
+  geom_hline(yintercept = 35.567,
+             col = "red",
+             linetype = "dashed",
+             linewidth = 0.8) +
+  annotate("text", 
+           x = 110, 
+           y = 45, 
+           label = "35.567 Average Slope \nfrom Model") +
+  ggtitle("Individually Adjusted Slopes \nFor Unrelated Condition Across All Speakers (N = 126)") +
+  theme_classic() +
+  theme(panel.grid.major = element_blank(),
+        panel.grid.minor = element_blank(),
+        axis.text.x = element_blank(),
+        text = element_text(size = 12))
+```
+
+The random effects align with the previous analyses and the results of the cluster analysis. We can see in the graph above that for roughly half of the speakers their finally and indiviudally adjusted slope is not greater than the average slope for the effect of the unrealted priming condition `mnon` in the model. I interpret this to mean that these speakers were slowed down by the unrelated condition but not much more than is usual in the model. It is striking that we also have six speakers on the very righthand side of the graph whose adjusted slopes are negative. These are the speakers whose reaction time was actually decreased by the unrelated priming condition. The second major group in the graph are those speakers whose adjusted slope is well above the average slope in the model. These are the speakers that were significantly slowed down by the unrelated prime-target pairs.
+
+# Summary & Conculsion
+
+The results of this experiment show that individual speakers process morphologically complex words such as *identifiable*, *celebration*, or *discriminatory* differently. At a group average level it is true that morphologically related prime-target pairs are reacted to faster, which indicates that they are processed faster. However, this is not true for every speaker. Some speakers do not show a faster reaction time when they are primed with a morphologically complex word (*celebration*) that already contains the target word (*celebrate*). From this I conclude that these speakers also do not tend to split morphologically complex words up into their component parts when they encounter them. Other speakers do show a faster reaction time related prime-target pairs, though. These speakers likely do split up the complex words they encounter into their individual components.
+
+These two different ways of processing morphologically complex words could potentially have consequences for the way speakers stress these words when pronouncing them. We could hypothesize that those speakers who show reaction time facilitation with related prime-target pairs in this experiment, process morphologically complex words in parts. When pronouncing such a word, these speakers would be aware of the base word hidden in the complex word and also take its stress into account. In other words: these speakers see the *idéntify* in *identifiable* and therefore say *idéntifiable*. Conversely, those speakers who do not react faster to the morphologically related prime-target pairs in this task, likely do not process complex words in parts. So they do not see the *identify* in *identifiable* right away and therefore likely say *identifíable*. I tested these hypotheses in my dissertation.
